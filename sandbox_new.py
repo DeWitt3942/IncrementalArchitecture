@@ -3,9 +3,9 @@ from keras.models import model_from_json
 import numpy as np
 import utils as u
 # import network as nn
-#import network_optimized as nn
-import  network_res as nn
-# import network_basic as nn
+import network_optimized as nn
+#import  network_res as nn
+## import network_basic as nn
 # import network_trellis as nn
 
 import label_classifier as _classifier
@@ -151,9 +151,6 @@ def evaluate_accuracy(task_id, dificulty, errors=False, outputFile='result.txt',
     X, Y = read_data(training=False, task_id=task_id, difficulty=dificulty)
     if not silent:
         print("Getting representation")
-    # representation = _classifier.get_representation(task_id)
-    # if representation is None:
-    #        representation = _classifier.default_representation(Y)
     Y = _classifier.labels_remove_twos(Y)
     representation = _classifier.find_representation(Y)
 
@@ -163,9 +160,7 @@ def evaluate_accuracy(task_id, dificulty, errors=False, outputFile='result.txt',
 
     raw_predicted = nn.get_model(tasks_encoded[(task_id, dificulty)]).predict(X)
     
-    # _classifier.print_labels(raw_predicted[:5])
     predicted = _classifier.get_normal_output(raw_predicted, representation)
-    # print(predicted.shape)
     acc = accuracy(predicted, Y, raw_predicted, errors)
     print('Accuracy %.4f' % acc)
     return acc
