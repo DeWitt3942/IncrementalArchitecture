@@ -124,6 +124,7 @@ def find_representation(labels):
     representation = []
     increasing = False
     seps = [0]
+    print(s)
     for i in range(2, label_size):
         if (s[i]> s[i-1]) and (s[i-1]==s[i-2]):
             seps.append(i)
@@ -144,7 +145,7 @@ def check():
     #raw_labels = np.array([[0.0, 0.142, 0.542, 0.001, 0.0, 0.13, 0.124, 0.0, 0.0, 0.061000001]])
     #r#epresentation = [(8,1)]
     #Y, _ = tra#nsform_labels_with_representation(labels_remove_twos(Y), 4)
-    _, Y = read_data(task_id=3, difficulty=2)
+    _, Y = read_data(task_id=2, difficulty=2)
     Y = labels_remove_twos(Y)
     rep = find_representation(Y)
     print(rep)
@@ -153,7 +154,7 @@ def check():
     #print_labels(normal)
 
 
-#check()
+check()
 
 
 

@@ -1,7 +1,8 @@
 import os
 
-os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32"
-
+#os.environ["THEANO_FLAGS"] = "mode=FAST_RUN,device=gpu,floatX=float32"
+import keras.backend as K
+import numpy as np
 from keras.models import Model, Sequential
 from keras.layers import Layer, Input, Embedding, Dense, merge, Convolution2D, Activation, Dropout, MaxPooling2D, \
     Flatten, UpSampling2D
@@ -11,8 +12,26 @@ tasks_alive = 0
 LAYERS_COUNT = 5
 INPUT_SHAPE = None
 
+class ScalingLayer(Layer):
+    def __init__(self, **kwargs):
+
+        super(ScalingLayer, self).__init__(**kwargs)
+
+    def build(self, input_shape):
+        self.dim = input_shape
+        #initial_weight_value = np.random.random((input_dim, input_dim))
+        #self.output_dim = input_dim
+        self.W = K.variable(np.random.random(), name='{}_W'.format(self.name))
+        self.trainable_weights = [self.W]
+
+    def call(self, x, mask=None):
+        return self.W * x#
+
+    def get_output_shape_for(self, input_shape):
+        return input_shape
 
 class SingleTaskModel:
+
     def __init__(self, input_shape, output_shape, independent = False):
         
         self.first = (tasks_alive == 0)
@@ -35,19 +54,17 @@ class SingleTaskModel:
     def resident_block(self, input_block=None, pooling=0, dropout=False, f=False, last_activation=None):
         input = input_block
         if last_activation is not None:
-            print(last_activation)
+            print('Residual..')
             down_scale = self.pool_count - last_activation[1]
 
             last_activation = last_activation[0]
             for i in range(down_scale):
                 last_activation = MaxPooling2D(pool_size=(2, 2), dim_ordering='tf')(last_activation)
             input = merge([input, last_activation], method='concat')
-        #print(input)
+        print(input)
         block = Convolution2D(64, 3, 3, border_mode='same', dim_ordering='th')(input)
-        # block = merge([block, input])
         block_output = [block, self.pool_count]
         block = Activation('relu')(block)
-        # block = merge([block, input])
         if dropout:
             block = Dropout(0.3)(block)
         for i in range(pooling):
@@ -100,12 +117,20 @@ class SingleTaskModel:
         self.inputs = [self.g_input]
         self.conv = MaxPooling2D((2, 2), dim_ordering='tf')(MaxPooling2D(pool_size=(1, 2))(self.g_input))
         for i in range(LAYERS_COUNT):
-            print(i, self.conv)
             layer_input = self.conv
             if not self.first and i > 0 and not self.independent:
-                inp = Input(tuple([i for i in SingleTaskModel.get_output_shape(i - 1)]))
-                self.inputs.append(inp)
-                layer_input = merge([inp] + [self.conv], mode='concat')
+                lateral_inputs = []
+                for task_id in range(self.task_id):
+                    print('Input shape is ', SingleTaskModel.get_output_shape(i-1))
+                    inp = Input(SingleTaskModel.get_output_shape(i-1))
+                    self.outputs.append(inp)
+                    self.inputs.append(inp)
+                    inp = ScalingLayer()(inp)
+                    lateral_inputs.append(inp)
+                layer_input = merge(lateral_inputs + [self.conv])
+                print(lateral_inputs[0]._keras_shape)
+                print('Collected input : ', layer_input)
+                print('Lateral : ', lateral_inputs)
             self.conv, _ = self.construct_layer_by_ccn_id(i, layer_input)
             self.outputs.append(self.conv)
 
@@ -116,11 +141,8 @@ class SingleTaskModel:
         self.output = Dense(output_size, activation='softmax')(self.task_output)
 
     def compile(self):
-        #print(self.inputs)
-        #print(self.output)
         self.model = Model(input=self.inputs, output=[self.output])
         self.model.compile(optimizer='adam', loss='categorical_crossentropy')
-        #self.model.summary()
 
     def make_input(self, X):
 
@@ -129,7 +151,6 @@ class SingleTaskModel:
         input_ = []
         for task_id in range(self.task_id):
             if tasks[task_id].alive:
-                print('Its alive!')
                 model = Model(input=tasks[task_id].inputs, output=tasks[task_id].outputs)
                 if not tasks[task_id].independent:
                     vals = model.predict([X] + input_)[:-1]
@@ -143,6 +164,8 @@ class SingleTaskModel:
         return [X] + input_
 
     def fit(self, x, Y, epoch, safe=True):
+        input_ =  self.make_input(x)
+
         if not safe:
             return self.model.fit(self.make_input(x), Y, nb_epoch=epoch)
         else:
@@ -187,4 +210,4 @@ def clear():
 
 from keras.callbacks import EarlyStopping
 
-stoppingCallBack = EarlyStopping(monitor='loss', patience=3)
+stoppingCallBack = EarlyStopping(monitor='loss', patience=5)

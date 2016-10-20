@@ -2,17 +2,19 @@ from readdata import read_data
 from keras.models import model_from_json
 import numpy as np
 import utils as u
-# import network as nn
-import network_optimized as nn
-#import  network_res as nn
-## import network_basic as nn
+import network as nn
+#import network_optimized as nn
+import  network_res as nn
+# import network_basic as nn
 # import network_trellis as nn
-
+#import network_scaling as nn
 import label_classifier as _classifier
-from functools import reduce
+def use_network(type):
+    nn = __import__(type)
 
 np.random.seed(1)
-
+from keras.layers import Layer, Input, Embedding, Dense, merge, Convolution2D, Activation, Dropout, MaxPooling2D, \
+    Flatten, UpSampling2D
 
 def number_of_outputs(filtered_labels):
     return max(map(lambda label: (label == 1).sum(), filtered_labels))
@@ -76,6 +78,7 @@ def train_network(X, Y, epochs=1, train=True, filename=None, load_model=False, f
         # model.summary()
         from keras.utils.visualize_util import plot
         plot(model, to_file='model.png')
+
         print('Fitting')
         history = nn.get_model().fit(X, Y, epoch=epochs)
         task_dims.append(Y.shape[1])
@@ -112,6 +115,9 @@ def train_network_ui(task_id, difficulty, epochs=3):
         old_accuracy = new_accuracy
     if old_accuracy<0.9:
         nn.tasks[-1].kill()
+
+    
+
 
         
 def get_original_output(task_id, difficulty):
@@ -151,6 +157,9 @@ def evaluate_accuracy(task_id, dificulty, errors=False, outputFile='result.txt',
     X, Y = read_data(training=False, task_id=task_id, difficulty=dificulty)
     if not silent:
         print("Getting representation")
+    # representation = _classifier.get_representation(task_id)
+    # if representation is None:
+    #        representation = _classifier.default_representation(Y)
     Y = _classifier.labels_remove_twos(Y)
     representation = _classifier.find_representation(Y)
 
@@ -160,7 +169,9 @@ def evaluate_accuracy(task_id, dificulty, errors=False, outputFile='result.txt',
 
     raw_predicted = nn.get_model(tasks_encoded[(task_id, dificulty)]).predict(X)
     
+    # _classifier.print_labels(raw_predicted[:5])
     predicted = _classifier.get_normal_output(raw_predicted, representation)
+    # print(predicted.shape)
     acc = accuracy(predicted, Y, raw_predicted, errors)
     print('Accuracy %.4f' % acc)
     return acc
