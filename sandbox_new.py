@@ -4,10 +4,10 @@ import numpy as np
 import utils as u
 import network as nn
 #import network_optimized as nn
-import  network_res as nn
+#import  network_res as nn
 # import network_basic as nn
 # import network_trellis as nn
-#import network_scaling as nn
+import network_scaling as nn
 import label_classifier as _classifier
 def use_network(type):
     nn = __import__(type)
