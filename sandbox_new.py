@@ -163,6 +163,7 @@ def evaluate_accuracy(task_id, dificulty, errors=False, outputFile='result.txt',
     Y = _classifier.labels_remove_twos(Y)
     representation = _classifier.find_representation(Y)
 
+    print('Representation for accuracy: ', representation)
     if not silent:
         print('read')
         print('predicting..')
@@ -201,6 +202,8 @@ def reset():
     global tasks_encoded
     tasks_encoded = {}
     nn.clear()
+
+
 
 
 while False:

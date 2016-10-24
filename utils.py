@@ -10,6 +10,6 @@ import numpy as np
 
 
 def k_most(arr, k):
-    return np.argpartition(arr, -k)[-k:]
-
-#from __future__ import print_function
+	if k==0:
+		return []
+	return np.argpartition(arr,  -k)[-k:]

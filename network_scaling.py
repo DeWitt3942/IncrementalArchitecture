@@ -118,19 +118,20 @@ class SingleTaskModel:
         self.conv = MaxPooling2D((2, 2), dim_ordering='tf')(MaxPooling2D(pool_size=(1, 2))(self.g_input))
         for i in range(LAYERS_COUNT):
             layer_input = self.conv
-            if not self.first and i > 0 and not self.independent:
+            if not self.first and i > 0 and not self.independent and tasks_alive>0:
                 lateral_inputs = []
                 for task_id in range(self.task_id):
-                    print('Input shape is ', SingleTaskModel.get_output_shape(i-1))
-                    inp = Input(SingleTaskModel.get_output_shape(i-1))
-                    self.outputs.append(inp)
-                    self.inputs.append(inp)
-                    inp = ScalingLayer()(inp)
-                    lateral_inputs.append(inp)
-                layer_input = merge(lateral_inputs + [self.conv])
-                print(lateral_inputs[0]._keras_shape)
-                print('Collected input : ', layer_input)
-                print('Lateral : ', lateral_inputs)
+                    if tasks[task_id].alive:
+                        print('Input shape is ', SingleTaskModel.get_output_shape(i-1))
+                        inp = Input(SingleTaskModel.get_output_shape(i-1))
+                        self.outputs.append(inp)
+                        self.inputs.append(inp)
+                        inp = ScalingLayer()(inp)
+                        lateral_inputs.append(inp)
+                layer_input = self.conv
+                if len(lateral_inputs)>0:
+                    layer_input = merge(lateral_inputs + [self.conv])
+
             self.conv, _ = self.construct_layer_by_ccn_id(i, layer_input)
             self.outputs.append(self.conv)
 
@@ -161,6 +162,7 @@ class SingleTaskModel:
                 else:
                     input_ = vals
                     # input_ = SingleTaskModel.add_arrays(input_, vals)
+        print(len([X] + input_))
         return [X] + input_
 
     def fit(self, x, Y, epoch, safe=True):
